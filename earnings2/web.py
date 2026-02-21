@@ -140,7 +140,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
   </div>
 </div>
 <script>
-const COLORS = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+// Brand colors: Goldman Sachs (steel blue), JP Morgan (Chase blue), Morgan Stanley (navy)
+const COMPANY_COLORS = {'Goldman Sachs':'#7399C6','JPMorgan Chase & Co.':'#0D5CA5','Morgan Stanley':'#002855'};
+const COLORS = ['#7399C6','#0D5CA5','#002855','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
 let allData = [];
 let companies = {};
 let selectedCompany = 'all';
@@ -320,7 +322,8 @@ function rebuildChart() {
       updateChartData();
     });
     const line = document.createElement('span');
-    line.style.cssText = `display:inline-block;width:18px;height:0;border-top:3px solid ${COLORS[ci % COLORS.length]};vertical-align:middle;`;
+    const clr = COMPANY_COLORS[name] || COLORS[ci % COLORS.length];
+    line.style.cssText = `display:inline-block;width:18px;height:0;border-top:3px solid ${clr};vertical-align:middle;`;
     lbl.appendChild(cb); lbl.appendChild(line); lbl.append(' ' + name);
     compRow.appendChild(lbl);
   });
@@ -367,8 +370,8 @@ function updateChartData() {
     datasets.push({
       label: comp,
       data: qSet.map(q => lookup[q] ?? null),
-      borderColor: COLORS[ci % COLORS.length],
-      backgroundColor: COLORS[ci % COLORS.length] + '22',
+      borderColor: COMPANY_COLORS[comp] || COLORS[ci % COLORS.length],
+      backgroundColor: (COMPANY_COLORS[comp] || COLORS[ci % COLORS.length]) + '22',
       tension: 0.3,
       spanGaps: true,
       borderWidth: 2,
