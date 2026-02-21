@@ -43,6 +43,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .chart-row + .chart-row { border-top: 1px solid #eee; }
   .chart-row label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
   .chart-row strong { font-size: 13px; min-width: 70px; color: #555; }
+  .year-range { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .year-range input[type=range] { flex: 1; accent-color: #4e79a7; }
+  .year-range .year-label { font-size: 14px; font-weight: 600; color: #333; min-width: 36px; text-align: center; }
   .chart-wrap { position: relative; height: 58vh; }
   .consolidate-btn { background: #e67e22; color: #fff; border: none; padding: 8px 18px; border-radius: 6px;
                      cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; display: none; }
@@ -104,8 +107,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <h1>Earnings2 Data Browser</h1>
   <button class="consolidate-btn" id="consolidate-btn" onclick="consolidateFeedback()">Consolidate Feedback to Docs</button>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="grid-panel">Grid</button>
-    <button class="tab-btn" data-tab="chart-panel">Chart</button>
+    <button class="tab-btn" data-tab="grid-panel">Grid</button>
+    <button class="tab-btn active" data-tab="chart-panel">Chart</button>
   </div>
 </div>
 <!-- Feedback modal -->
@@ -131,10 +134,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
     <span>Company:</span>
     <button class="company-btn active" data-company="all">All</button>
   </div>
-  <div id="grid-panel" class="panel active">
+  <div id="grid-panel" class="panel">
     <div id="grid" class="ag-theme-alpine"></div>
   </div>
-  <div id="chart-panel" class="panel">
+  <div id="chart-panel" class="panel active">
     <div class="chart-controls" id="chart-controls"></div>
     <div class="chart-wrap"><canvas id="chart"></canvas></div>
   </div>
@@ -283,7 +286,28 @@ function initChart() {
       plugins: { legend: { display: false } },
       scales: {
         y: { title: { display: true, text: 'Value ($M)' } },
-        x: { title: { display: true, text: 'Quarter' } },
+        x: {
+          title: { display: true, text: 'Quarter' },
+          ticks: {
+            callback: function(val, i) {
+              const labels = this.chart.data.labels;
+              const label = labels[i];
+              const m = label.match(/Q(\d)\s+(\d{4})/);
+              if (!m) return '';
+              const year = m[2];
+              // Find all indices for this year
+              const yearIndices = labels.reduce((acc, l, j) => {
+                if (l.includes(year)) acc.push(j);
+                return acc;
+              }, []);
+              // Show label only at the middle index of this year's quarters
+              const mid = yearIndices[Math.floor(yearIndices.length / 2)];
+              if (i === mid) return year;
+              return '';
+            },
+            maxRotation: 0,
+          },
+        },
       },
     },
   });
@@ -292,6 +316,7 @@ function initChart() {
 
 let checkedCompanies = new Set();
 let selectedMetric = null;
+let yearMin = null, yearMax = null;
 
 function rebuildChart() {
   const data = allData;
@@ -348,12 +373,49 @@ function rebuildChart() {
   });
   controlsEl.appendChild(metricRow);
 
+  // Row 3: Year range slider
+  const allYears = [...new Set(allData.map(r => { const m = r.quarter.match(/(\d{4})/); return m ? parseInt(m[1]) : null; }).filter(Boolean))].sort();
+  const dataMin = allYears[0], dataMax = allYears[allYears.length - 1];
+  if (yearMin === null) yearMin = dataMin;
+  if (yearMax === null) yearMax = dataMax;
+
+  const rangeRow = document.createElement('div');
+  rangeRow.className = 'chart-row';
+  rangeRow.innerHTML = `<strong>Years:</strong>
+    <div class="year-range">
+      <span class="year-label" id="yr-min-label">${yearMin}</span>
+      <input type="range" id="yr-min" min="${dataMin}" max="${dataMax}" value="${yearMin}" step="1">
+      <input type="range" id="yr-max" min="${dataMin}" max="${dataMax}" value="${yearMax}" step="1">
+      <span class="year-label" id="yr-max-label">${yearMax}</span>
+    </div>`;
+  controlsEl.appendChild(rangeRow);
+
+  document.getElementById('yr-min').addEventListener('input', e => {
+    yearMin = parseInt(e.target.value);
+    if (yearMin > yearMax) { yearMax = yearMin; document.getElementById('yr-max').value = yearMax; document.getElementById('yr-max-label').textContent = yearMax; }
+    document.getElementById('yr-min-label').textContent = yearMin;
+    updateChartData();
+  });
+  document.getElementById('yr-max').addEventListener('input', e => {
+    yearMax = parseInt(e.target.value);
+    if (yearMax < yearMin) { yearMin = yearMax; document.getElementById('yr-min').value = yearMin; document.getElementById('yr-min-label').textContent = yearMin; }
+    document.getElementById('yr-max-label').textContent = yearMax;
+    updateChartData();
+  });
+
   updateChartData();
 }
 
 function updateChartData() {
   if (!selectedMetric) return;
-  const data = allData.filter(r => checkedCompanies.has(r.company_name) && r.metric_name === selectedMetric);
+  const data = allData.filter(r => {
+    if (!checkedCompanies.has(r.company_name) || r.metric_name !== selectedMetric) return false;
+    if (yearMin !== null || yearMax !== null) {
+      const m = r.quarter.match(/(\d{4})/);
+      if (m) { const y = parseInt(m[1]); if (y < yearMin || y > yearMax) return false; }
+    }
+    return true;
+  });
   const qSet = [...new Set(data.map(r => r.quarter))];
   qSet.sort((a, b) => quarterSort(a) - quarterSort(b));
 
@@ -479,7 +541,7 @@ async function consolidateFeedback() {
   }
 }
 
-loadData().then(() => updateConsolidateBtn());
+loadData().then(() => { updateConsolidateBtn(); initChart(); });
 </script>
 </body>
 </html>"""
