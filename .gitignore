@@ -1,5 +1,5 @@
 cache/
-data/
+data/*.db-journal
 __pycache__/
 *.egg-info/
 dist/
