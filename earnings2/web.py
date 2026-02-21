@@ -68,6 +68,34 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .modal .btn-cancel { background: #eee; color: #555; }
   .modal .btn-cancel:hover { background: #ddd; }
   .feedback-icon { cursor: pointer; font-size: 15px; }
+
+  /* ---- Mobile responsive ---- */
+  @media (max-width: 768px) {
+    .header { flex-wrap: wrap; padding: 12px 16px; gap: 8px; }
+    .header h1 { font-size: 16px; width: 100%; }
+    .tabs { margin-left: 0; }
+    .tab-btn { padding: 8px 16px; font-size: 13px; }
+    .consolidate-btn { font-size: 12px; padding: 6px 12px; }
+    .container { padding: 12px; }
+    .company-bar { gap: 6px; }
+    .company-btn { padding: 8px 14px; font-size: 12px; }
+    #grid-panel .ag-theme-alpine { height: 65vh; }
+    .chart-wrap { height: 45vh; }
+    .chart-row { gap: 8px; }
+    .chart-row label { font-size: 12px; }
+    .chart-row strong { min-width: 60px; font-size: 12px; }
+    #chart-panel { padding: 12px; }
+    .modal { padding: 16px; }
+    .modal h3 { font-size: 15px; }
+  }
+
+  @media (max-width: 480px) {
+    .header h1 { font-size: 15px; }
+    .container { padding: 8px; }
+    .company-btn { padding: 8px 10px; font-size: 11px; border-radius: 16px; }
+    #grid-panel .ag-theme-alpine { height: 60vh; }
+    .chart-wrap { height: 40vh; }
+  }
 </style>
 </head>
 <body>
@@ -181,31 +209,33 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 /* ---- AG Grid ---- */
+const isMobile = window.innerWidth <= 768;
+
 function initGrid() {
   const columnDefs = [
-    { field: 'company_name', headerName: 'Company', width: 160, filter: 'agTextColumnFilter' },
-    { field: 'quarter', headerName: 'Quarter', width: 120, sort: 'asc',
+    { field: 'company_name', headerName: 'Company', width: isMobile ? 110 : 160, filter: 'agTextColumnFilter' },
+    { field: 'quarter', headerName: 'Quarter', width: isMobile ? 90 : 120, sort: 'asc',
       comparator: (a, b) => quarterSort(a) - quarterSort(b) },
-    { field: 'metric_name', headerName: 'Metric', flex: 1, filter: 'agTextColumnFilter' },
-    { field: 'value_millions', headerName: 'Value ($M)', width: 140, type: 'numericColumn',
+    { field: 'metric_name', headerName: 'Metric', flex: 1, minWidth: isMobile ? 120 : 150, filter: 'agTextColumnFilter' },
+    { field: 'value_millions', headerName: 'Value ($M)', width: isMobile ? 110 : 140, type: 'numericColumn',
       valueFormatter: p => p.value != null ? p.value.toLocaleString('en-US', {maximumFractionDigits: 0}) : '' },
-    { field: 'confidence', headerName: 'Confidence', width: 120, type: 'numericColumn',
+    { field: 'confidence', headerName: 'Confidence', width: 120, type: 'numericColumn', hide: isMobile,
       valueFormatter: p => p.value != null ? p.value.toFixed(2) : '' },
-    { field: 'source_page', headerName: 'Source Page', width: 120, type: 'numericColumn' },
-    { field: 'verification', headerName: 'Verification', width: 130, filter: 'agTextColumnFilter',
+    { field: 'source_page', headerName: 'Src Pg', width: isMobile ? 70 : 120, type: 'numericColumn', hide: isMobile },
+    { field: 'verification', headerName: 'Verify', width: isMobile ? 90 : 130, filter: 'agTextColumnFilter',
       cellStyle: p => {
         if (p.value === 'Correct') return { color: '#fff', backgroundColor: '#2e7d32', fontWeight: 600, textAlign: 'center' };
         if (p.value === 'Incorrect') return { color: '#fff', backgroundColor: '#c62828', fontWeight: 600, textAlign: 'center' };
         return { color: '#888', backgroundColor: '#f0f0f0', textAlign: 'center' };
       }},
-    { field: 'verification_value', headerName: 'CNBC Value ($M)', width: 150, type: 'numericColumn',
+    { field: 'verification_value', headerName: 'CNBC ($M)', width: isMobile ? 100 : 150, type: 'numericColumn', hide: isMobile,
       valueFormatter: p => p.value != null ? p.value.toLocaleString('en-US', {maximumFractionDigits: 0}) : '' },
-    { field: 'verification_source_url', headerName: 'Source', width: 90,
+    { field: 'verification_source_url', headerName: 'Source', width: isMobile ? 60 : 90, hide: isMobile,
       cellRenderer: p => {
         if (!p.value) return '';
         return `<a href="${p.value}" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:none">CNBC &#x2197;</a>`;
       }},
-    { headerName: 'Feedback', width: 100,
+    { headerName: '', width: isMobile ? 60 : 100,
       cellRenderer: p => {
         const d = p.data;
         if (d.verification === 'Incorrect') {
