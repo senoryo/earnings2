@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request
 from earnings2.db.schema import get_conn, init_db
 
 app = Flask(__name__)
+init_db()
 
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="en">

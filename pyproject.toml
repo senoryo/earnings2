@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.25",
     "click>=8.1",
     "flask>=3.0",
+    "gunicorn>=22.0",
 ]
 
 [tool.setuptools.packages.find]
